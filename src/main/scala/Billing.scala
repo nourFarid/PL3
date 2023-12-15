@@ -2,6 +2,7 @@
 
 import java.sql.{Connection, ResultSet}
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 //object BillingDAO {
 //  //Database connection details
@@ -63,31 +64,44 @@ import akka.actor.{Actor, Props}
 import java.sql.{PreparedStatement}
 
 // Define messages for interacting with BillingDAO actor
-case class MakeBill(booking_id: Int,roomId:Int ,billValue: Int)
+case class MakeBill(booking_id: Int,roomId:Int )
 case class ListBookings()
 
 class BillingDAO extends Actor {
 
   override def receive: Receive = {
-    case MakeBill(booking_id,roomId,billValue: Int) => makeBill(booking_id, roomId: Int,billValue: Int)
+    case MakeBill(booking_id,roomId) => makeBill(booking_id, roomId: Int)
     case ListBookings() => listBookings()
   }
 
-  private def makeBill(booking_id: Int,roomId: Int, billValue: Int): Unit = {
+  private def makeBill(booking_id: Int,roomId: Int): Unit = {
 
     var connection: Connection = null
+    var check_in_date :LocalDate=null
+    val check_out_date=LocalDate.now()
+    var dayValue= 100
     connection = DatabaseConfig.getConnection
     val statement = connection.createStatement()
     if (connection != null) {
-//      val statement = connection.createStatement()
     try {
-      // Generate a positive random integer
-//      val billValue: Int = Math.abs(Random.nextInt())
-//      println(s"Bill was made successfully, and it's: $billValue")
+      val testQuery=s"select check_in_date from Bookings where booking_id= $booking_id"
+      val resultSet: ResultSet = statement.executeQuery(testQuery)
+      if(resultSet.next()){
+        check_in_date = resultSet.getDate("check_in_date").toLocalDate()
+      }
+
+//      println("check in date:" + check_in_date)
+
+
+      val daysBetween: Long = ChronoUnit.DAYS.between(check_in_date, check_out_date)
+//println("DAYS: " + daysBetween)
+
+      var billValue = dayValue * daysBetween
+//      println("BILLLLLLLL:"+billValue)
       val bookingQuery = "INSERT INTO Billing (booking_id, total_amount) VALUES (?, ?)"
       val bookingStatement: PreparedStatement = connection.prepareStatement(bookingQuery)
       bookingStatement.setInt(1, booking_id)
-      bookingStatement.setInt(2, billValue)
+      bookingStatement.setLong(2, billValue)
       bookingStatement.executeUpdate()
       val updateQuery = "UPDATE Room SET is_available = ? WHERE room_id = ?"
       val updateQueryDate = "UPDATE Bookings SET check_out_date = ? WHERE room_id = ?"
@@ -98,11 +112,12 @@ class BillingDAO extends Actor {
       roomUpdateStatement.setBoolean(1, true)
       roomUpdateStatement.setInt(2, roomId)
 
-      bookingUpdateStatement.setDate(1, java.sql.Date.valueOf(LocalDate.now()))
+      bookingUpdateStatement.setDate(1, java.sql.Date.valueOf(check_out_date))
       bookingUpdateStatement.setInt(2, roomId)
 
       roomUpdateStatement.executeUpdate()
       bookingUpdateStatement.executeUpdate()
+      println(s"Bill was made successfully, and it's: $billValue" )
 //      println("CHECKED OUT!")
 
 

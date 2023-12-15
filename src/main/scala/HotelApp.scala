@@ -55,10 +55,11 @@ object HotelApp {
             val booking_id = readInt()
             print("enter room id to check out: ")
             roomId = readInt()
-            val billValue: Int = Math.abs(Random.nextInt())
-            billingActor ! MakeBill(booking_id,roomId,billValue)
-            println(s"Bill was made successfully, and it's: $billValue" )
+//            val billValue: Int = Math.abs(Random.nextInt())
+            billingActor ! MakeBill(booking_id,roomId)
+//            println(s"Bill was made successfully, and it's: $billValue" )
             println("CHECKED OUT!")
+            Thread.sleep(1000)
 
 
 
